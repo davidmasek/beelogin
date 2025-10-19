@@ -1,0 +1,273 @@
+/* --- BeeLogin Theme --- */
+
+/* Root variables for a consistent theme.
+  Colors are inspired by bees: gold, dark gray, and off-white.
+*/
+:root {
+    --primary-color: #FFD60A;
+    /* Honey Gold */
+    --secondary-color: #333333;
+    /* Dark Gray / Near Black */
+    --background-color: #fefefe;
+    /* Light Background */
+    --card-background: #ffffff;
+    /* White Card */
+    --text-color: #333333;
+    --error-color: #d93025;
+    /* Red for errors */
+    --border-radius: 8px;
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Base Styles & Reset --- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    /* Use relative font size for better accessibility */
+    font-size: 100%;
+    /* Typically 16px */
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+/* --- Main Layout Container --- */
+.container {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+/* --- Header --- */
+.header {
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+}
+
+.header .bee-icon {
+    width: 48px;
+    height: 48px;
+}
+
+/* --- Card --- */
+.card {
+    background-color: var(--card-background);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    width: 100%;
+}
+
+.card h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.card p {
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+/* --- Forms --- */
+form {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+input[type="text"],
+input[type="email"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(255, 214, 10, 0.3);
+}
+
+/* --- Buttons --- */
+.btn {
+    display: inline-block;
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+}
+
+.btn-primary:hover {
+    background-color: #ffd000;
+}
+
+.btn-secondary {
+    background-color: #e0e0e0;
+    color: var(--secondary-color);
+}
+
+.btn-secondary:hover {
+    background-color: #d0d0d0;
+}
+
+/* --- Messages & States --- */
+.logged-in-user {
+    font-weight: 700;
+    /* Changed color for better readability */
+    color: var(--secondary-color);
+    background-color: #f0f0f0;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+.error-message {
+    color: var(--error-color);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* --- Logged-in User Info --- */
+.user-info-list {
+    text-align: left;
+    margin: 2rem 0;
+    border-top: 1px solid #eee;
+    padding-top: 1.5rem;
+}
+
+.user-info-list div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.user-info-list div:not(:last-child) {
+    border-bottom: 1px solid #eee;
+}
+
+.user-info-list dt {
+    font-weight: 600;
+    color: #666;
+}
+
+.user-info-list dd {
+    font-weight: 500;
+    margin-left: 1rem;
+}
+
+/* --- Login Options & Separators --- */
+.separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #999;
+    margin: 1.5rem 0;
+}
+
+.separator::before,
+.separator::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.separator:not(:empty)::before {
+    margin-right: .5em;
+}
+
+.separator:not(:empty)::after {
+    margin-left: .5em;
+}
+
+/* --- Page Info Section --- */
+.page-info {
+    margin-top: 2.5rem;
+    font-size: 0.875rem;
+    color: #777;
+    max-width: 500px;
+    /* A bit wider than the card */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.page-info p {
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.page-info a {
+    color: var(--secondary-color);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid var(--primary-color);
+}
+
+.page-info a:hover {
+    color: var(--primary-color);
+}
+
+/* --- Links --- */
+.home-link {
+    display: block;
+    margin-top: 1.5rem;
+    color: var(--secondary-color);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.home-link:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}

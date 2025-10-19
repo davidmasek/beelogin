@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    {% if username %}
+    <!-- Logged-in State -->
+    <h2>Welcome Back!</h2>
+    <p>You are logged in as <strong class="logged-in-user">{{ username }}</strong>.</p>
+
+    <!-- Dummy user data display -->
+    <dl class="user-info-list">
+        <div>
+            <dt>Account ID:</dt>
+            <dd>{{ user_id | default('bee-12345') }}</dd>
+        </div>
+        <div>
+            <dt>Member Since:</dt>
+            <dd>{{ member_since | default('Oct 2025') }}</dd>
+        </div>
+        <div>
+            <dt>Last Login:</dt>
+            <dd>{{ last_login | default('Today') }}</dd>
+        </div>
+    </dl>
+
+    <form method="POST" action="/logout" style="text-align: center;">
+        <button type="submit" class="btn btn-secondary">Logout</button>
+    </form>
+    {% else %}
+    <!-- Logged-out State -->
+    <h2>Secure Login</h2>
+    <p>Enter your email to receive a login code, or choose another option.</p>
+
+    <form method="POST" action="/request_code">
+        <div class="form-group">
+            <label for="username">Email Address</label>
+            <input type="email" id="username" name="username" placeholder="you@example.com" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Send Login Code</button>
+    </form>
+
+    <div class="separator"><span>or</span></div>
+
+    <button type="button" class="btn btn-secondary">Login with XYZ</button>
+    {% endif %}
+</div>
+
+<!-- General page info, visible in both logged-in and logged-out states -->
+<div class="page-info">
+    <p>Welcome to BeeLogin, a minimalist and secure magic link authentication system. It's designed to be simple,
+        lightweight, and easy to integrate into any project.</p>
+    <p>This is a demo project. Feel free to explore the code, fork it, and adapt it for your own needs. The complete
+        source code is available on <a href="#">GitHub</a>.</p>
+</div>
+{% endblock %}
