@@ -28,7 +28,6 @@
     </form>
     {% else %}
     <!-- Logged-out State -->
-    <h2>Secure Login</h2>
     <p>Enter your email to receive a login code, or choose another option.</p>
 
     <form method="POST" action="/request_code">
@@ -41,15 +40,24 @@
 
     <div class="separator"><span>or</span></div>
 
-    <button type="button" class="btn btn-secondary">Login with XYZ</button>
+    <!-- <div>
+        <button type="button" class="btn btn-secondary">Login with XYZ</button>
+    </div>
+    <br> -->
+    <div>
+        {% include "gbutton.html" %}
+    </div>
+    <br>
+    <div>
+        Session ID: {{ session_id | default("none") }}
+    </div>
     {% endif %}
 </div>
 
 <!-- General page info, visible in both logged-in and logged-out states -->
 <div class="page-info">
-    <p>Welcome to BeeLogin, a minimalist and secure magic link authentication system. It's designed to be simple,
-        lightweight, and easy to integrate into any project.</p>
-    <p>This is a demo project. Feel free to explore the code, fork it, and adapt it for your own needs. The complete
-        source code is available on <a href="#">GitHub</a>.</p>
+    <p>Welcome to BeeLogin - a playground for different authentication methods.</p>
+    <p>This is a demo project. The source code is available on <a href="https://github.com/davidmasek/beelogin">GitHub</a>.</p>
+    <p><a href="/privacy" target="_blank">Privacy Policy</a> and <a href="/tos" target="_blank">Terms of Service</a> are available.</p>
 </div>
 {% endblock %}

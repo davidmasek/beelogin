@@ -3,10 +3,14 @@
 {% block content %}
 <div class="card">
     <h2>Check Your Inbox</h2>
-    <p>A verification code was sent to <strong>{{ req_username }}</strong>. Please enter it below.</p>
+    <p>A verification code was NOT sent to <strong>{{ req_username }}</strong>. Please enter it below.</p>
+    {% if code %}
+    <p>Because this is just a demo you can view the code here: <strong>{{ code }}</strong>.</p>
+    {% endif %}
 
     {% if invalid_code %}
     <p class="error-message">That code is incorrect. Please try again.</p>
+    <p>If you don't know the code, start the login process again.</p>
     {% endif %}
 
     <form method="POST" action="/verify_code">

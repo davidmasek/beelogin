@@ -1,0 +1,45 @@
+Terms of Service for BeeLogin
+
+Effective Date: 2025-10-23
+
+Welcome to BeeLogin (the "Service"). These Terms of Service ("Terms") govern your use of our website.
+
+By accessing or using the Service, you agree to be bound by these Terms. If you disagree with any part of the terms, then you may not access the Service.
+
+1. Use of the Service
+
+Our Service provides functionality related to user authentication. You must use the Service only for its intended purpose and in compliance with all applicable laws.
+
+2. User Accounts
+
+To use our Service, you may need to register an account by providing an email address or by using a third-party authentication provider (OAuth). You are responsible for all activities that occur under your account and for keeping your login credentials secure.
+
+3. Acceptable Use
+
+You agree not to use the Service:
+
+For any illegal or unauthorized purpose.
+
+To attempt to breach or compromise the security of our Service or systems.
+
+4. Termination
+
+We may terminate or suspend your access to our Service immediately, without prior notice or liability, for any reason whatsoever, including if you breach these Terms.
+
+You may stop using the Service at any time.
+
+5. Disclaimer of Warranties
+
+The Service is provided "AS IS" and "AS AVAILABLE," without any warranties, express or implied. We do not guarantee that the Service will always be secure, error-free, or uninterrupted.
+
+6. Limitation of Liability
+
+In no event shall BeeLogin be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of the Service.
+
+7. Changes to These Terms
+
+We reserve the right to modify these Terms at any time. We will post the updated Terms on this page. Your continued use of the Service after any changes constitutes your acceptance of the new Terms.
+
+8. Contact Us
+
+If you have any questions about these Terms, please contact us at: beelogin.honey@gmail.com

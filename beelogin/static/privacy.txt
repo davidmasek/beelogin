@@ -1,0 +1,41 @@
+Privacy Policy for BeeLogin
+
+Effective Date: 2025-10-23
+
+Welcome to BeeLogin. We are committed to protecting your privacy. This policy outlines how we handle your personal information.
+
+Contact Us
+
+If you have any questions about this Privacy Policy, please contact us at: beelogin.honey@gmail.com
+
+Information We Collect
+
+We collect very limited information, only what is necessary for you to use our service:
+
+Email Address: When you register or log in directly, we collect your email address.
+
+Third-Party Authentication (OAuth): If you log in using a third-party service (e.g., Google, Facebook, GitHub), we receive the email address and basic authentication information required from that provider to verify your identity.
+
+How We Use Your Information
+
+We use the information we collect solely for authentication purposes. This includes:
+
+Creating and managing your user account.
+
+Allowing you to log in to our website.
+
+Verifying your identity when you access your account.
+
+We do not use your email for marketing purposes.
+
+Cookies
+
+We use cookies on our website. These cookies are strictly necessary and are used only for authentication purposes (such as keeping you logged in). We do not use cookies for tracking, analytics, or advertising.
+
+Data Sharing
+
+We do not sell, trade, or otherwise share your personal information with any outside parties.
+
+Changes to This Policy
+
+We may update this Privacy Policy from time to time. We will post any changes on this page.
