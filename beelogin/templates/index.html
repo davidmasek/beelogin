@@ -49,6 +49,13 @@
     </div>
     <br>
     <div>
+        <a
+            href="https://login.szn.cz/api/v1/oauth/auth?response_type=code&client_id={{ s_client_id }}&scope=identity&redirect_uri={{ s_redirect_uri }}&state={{ g_state }}">
+            <button type="button" class="btn btn-secondary">Login with Seznam</button>
+        </a>
+    </div>
+    <br>
+    <div>
         Session ID: {{ session_id | default("none") }}
     </div>
     {% endif %}
@@ -57,7 +64,9 @@
 <!-- General page info, visible in both logged-in and logged-out states -->
 <div class="page-info">
     <p>Welcome to BeeLogin - a playground for different authentication methods.</p>
-    <p>This is a demo project. The source code is available on <a href="https://github.com/davidmasek/beelogin">GitHub</a>.</p>
-    <p><a href="/privacy" target="_blank">Privacy Policy</a> and <a href="/tos" target="_blank">Terms of Service</a> are available.</p>
+    <p>This is a demo project. The source code is available on <a
+            href="https://github.com/davidmasek/beelogin">GitHub</a>.</p>
+    <p><a href="/privacy" target="_blank">Privacy Policy</a> and <a href="/tos" target="_blank">Terms of Service</a> are
+        available.</p>
 </div>
 {% endblock %}
