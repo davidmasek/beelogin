@@ -44,8 +44,15 @@
         <button type="button" class="btn btn-secondary">Login with XYZ</button>
     </div>
     <br> -->
-    <div>
+    <!-- <div>
         {% include "gbutton.html" %}
+    </div>
+    <br> -->
+    <div>
+        <a
+            href="https://github.com/login/oauth/authorize?client_id={{ gh_client_id }}&state={{ g_state }}&redirect_uri={{ gh_redirect_uri }}">
+            <button type="button" class="btn btn-secondary">Login with GitHub</button>
+        </a>
     </div>
     <br>
     <div>

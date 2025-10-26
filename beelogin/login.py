@@ -117,13 +117,105 @@ def root(
             "username": session.user,
             "g_client_id": settings.g_client_id,
             "s_client_id": settings.s_client_id,
+            "gh_client_id": settings.gh_client_id,
             "g_redirect_uri": f"{base}{settings.g_redirect_uri}",
             "s_redirect_uri": f"{base}{settings.s_redirect_uri}",
+            "gh_redirect_uri": f"{base}{settings.gh_redirect_uri}",
             "g_state": session.state,
             "g_nonce": session.nonce,
             "session_id": session.session_id,
         },
     )
+
+
+@router.get("/github/callback")
+def gh_callback(
+    session: SessionData = Depends(get_session),
+    settings: config.Settings = Depends(config.get_settings),
+    state: str = "",
+    code: str = "",
+):
+    # 1. State Validation
+    # Checks if the 'state' parameter from the GitHub redirect matches the one stored in the session.
+    if not state or not session.state or state != session.state:
+        raise HTTPException(401, detail="State mismatch.")
+
+    # Clear the state once it's been used to prevent replay.
+    session.state = None
+
+    # 2. Check for Authorization Code
+    if not code:
+        raise HTTPException(status_code=400, detail="Authorization code missing.")
+
+    # 3. Exchange Code for Access Token
+    token_url = "https://github.com/login/oauth/access_token"
+    base = settings.localhost_uri # Use 'base' if 'gh_redirect_uri' is configured to be local
+
+    with httpx.Client(base_url=token_url) as client:
+        try:
+            # GitHub expects 'Accept: application/json' header to return JSON instead of a form-encoded string
+            response = client.post(
+                "", # Empty string since base_url is already the token_url
+                headers={"Accept": "application/json"},
+                data={
+                    "code": code,
+                    "client_id": settings.gh_client_id,
+                    "client_secret": settings.gh_client_secret,
+                    "redirect_uri": f"{base}{settings.gh_redirect_uri}",
+                    # GitHub does not require a grant_type parameter for this step
+                },
+            )
+            response.raise_for_status()  # Raises an exception for 4xx/5xx status codes
+            tokens = response.json()
+
+        except httpx.HTTPStatusError as e:
+            print(f"GitHub Token exchange failed: {e.response.text}")
+            raise HTTPException(
+                status_code=400, detail="Failed to exchange code for GitHub tokens."
+            )
+
+    access_token = tokens.get("access_token")
+    if not access_token:
+        # Check if an error was returned instead of tokens
+        error = tokens.get("error_description") or "Access token not found in response."
+        raise HTTPException(status_code=400, detail=f"GitHub token error: {error}")
+
+    # 4. Fetch User Information using Access Token
+    user_api_url = "https://api.github.com/user"
+    with httpx.Client() as client:
+        try:
+            # Use the access token in the Authorization header
+            user_response = client.get(
+                user_api_url,
+                headers={
+                    "Authorization": f"token {access_token}",
+                    "Accept": "application/vnd.github.v3+json",
+                },
+            )
+            user_response.raise_for_status()
+            user_info = user_response.json()
+
+        except httpx.HTTPStatusError as e:
+            print(f"GitHub User info fetch failed: {e.response.text}")
+            raise HTTPException(
+                status_code=400, detail="Failed to retrieve user info from GitHub."
+            )
+
+    # 5. Extract and Store User Identifier
+    # GitHub provides 'login' (username) and 'id'. 'email' may be null if private or not exposed.
+    github_username = user_info.get("login")
+    github_id = user_info.get("id")
+
+    # Prioritize username or ID for the session user.
+    if github_username:
+        session.user = github_username
+    elif github_id:
+        session.user = str(github_id)
+    else:
+        raise HTTPException(status_code=500, detail="Unexpected user info from GitHub.")
+
+    # 6. Redirect to the main page
+    return RedirectResponse("/", status_code=303)
 
 
 @router.get("/seznam/callback")

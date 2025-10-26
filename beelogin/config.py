@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     s_client_id: str
     s_client_secret: str
     s_redirect_uri: str = "/seznam/callback"
+    # GitHub
+    gh_client_id: str
+    gh_client_secret: str
+    gh_redirect_uri: str = "/github/callback"
 
     model_config = SettingsConfigDict(env_file=_current_dir / ".env")
 
