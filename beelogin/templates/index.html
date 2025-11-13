@@ -29,6 +29,9 @@
     {% else %}
     <!-- Logged-out State -->
     <p>Enter your email to receive a login code, or choose another option.</p>
+    {% if redirect %}
+    <p>You will be redirected to <strong>{{ redirect }}</strong> after login.</p>
+    {% endif %}
 
     <form method="POST" action="/request_code?redirect={{ redirect }}">
         <div class="form-group">
