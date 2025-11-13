@@ -1,3 +1,4 @@
+import logging
 import base64
 import datetime
 import hashlib
@@ -6,8 +7,10 @@ import os
 import secrets
 import string
 from dataclasses import dataclass, field
+import tomllib
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote_plus
 
 import httpx
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -116,12 +119,16 @@ def root(
         name="index.html",
         context={
             "username": session.user,
-            "g_client_id": settings.g_client_id,
+            "email_enabled": settings.email_enabled,
+            "g_enabled": settings.g_enabled,
+            "s_enabled": settings.s_enabled,
+            "gh_enabled": settings.gh_enabled,
+            "g_client_id": settings.gh_enabled,
             "s_client_id": settings.s_client_id,
             "gh_client_id": settings.gh_client_id,
-            "g_redirect_uri": f"{base}{settings.g_redirect_uri}",
-            "s_redirect_uri": f"{base}{settings.s_redirect_uri}",
-            "gh_redirect_uri": f"{base}{settings.gh_redirect_uri}",
+            "g_redirect_uri": quote_plus(f"{base}{settings.g_redirect_uri}"),
+            "s_redirect_uri": quote_plus(f"{base}{settings.s_redirect_uri}"),
+            "gh_redirect_uri": quote_plus(f"{base}{settings.gh_redirect_uri}"),
             "g_state": session.state,
             "g_nonce": session.nonce,
             "session_id": session.session_id,
@@ -150,6 +157,7 @@ def caddy(
             },
         )
     return RedirectResponse(
+        # TODO: which url?
         f"https://localhost:3000/?redirect={original_uri}",
         status_code=303,
     )
@@ -391,6 +399,7 @@ def request_code(
     request: Request,
     username: Annotated[str, Form()],
     redirect: str = "",
+    settings: config.Settings = Depends(config.get_settings),
 ):
     user = user_store.get_or_create(username)
     code = user.create_login_code()
@@ -401,6 +410,7 @@ def request_code(
             "req_username": username,
             "code": code.code,
             "redirect": redirect,
+            "fixed_codes": settings.fixed_codes,
         },
     )
 
@@ -412,17 +422,38 @@ def verify_code(
     code: Annotated[str, Form()],
     redirect: str = "",
     session: SessionData = Depends(get_session),
+    settings: config.Settings = Depends(config.get_settings),
 ):
+    if not settings.email_enabled:
+        raise HTTPException(403)
+
     valid_code = False
-    user = user_store.get(username)
-    if user:
-        valid_code = user.validate_login_code(code)
+    if settings.fixed_codes:
+        try:
+            with open(Path(Path.home() / ".beelogin").absolute(), "rb") as fh:
+                cfg = tomllib.load(fh)
+            for user in cfg.get("users") or []:
+                name = user.get("name") or ""
+                if name == username:
+                    pwd = user.get("password")
+                    if pwd and code == pwd:
+                        valid_code = True
+                        break
+        except (FileNotFoundError, tomllib.TOMLDecodeError):
+            logging.exception("Fixed codes not configured")
+            raise HTTPException(500, "Fixed codes not configured")
+    else:
+        user = user_store.get(username)
+        if user:
+            valid_code = user.validate_login_code(code)
 
     if valid_code:
         session.user = username
         if redirect:
             # TODO: might want to check the URL...
-            return RedirectResponse(redirect, status_code=303)
+            return RedirectResponse(
+                redirect, status_code=303, headers={"X-BeeLogin-User": session.user}
+            )
         response = RedirectResponse("/", status_code=303)
         return response
 
@@ -433,6 +464,7 @@ def verify_code(
             "req_username": username,
             "invalid_code": True,
             "redirect": redirect,
+            "fixed_codes": settings.fixed_codes,
         },
     )
 

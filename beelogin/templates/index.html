@@ -33,6 +33,7 @@
     <p>You will be redirected to <strong>{{ redirect }}</strong> after login.</p>
     {% endif %}
 
+    {% if email_enabled %}
     <form method="POST" action="/request_code?redirect={{ redirect }}">
         <div class="form-group">
             <label for="username">Email Address</label>
@@ -40,8 +41,10 @@
         </div>
         <button type="submit" class="btn btn-primary">Send Login Code</button>
     </form>
-
+    {% endif %}
+    {% if fake_email_enabled and (gh_enabled or s_enabled) %}
     <div class="separator"><span>or</span></div>
+    {% endif %}
 
     <!-- <div>
         <button type="button" class="btn btn-secondary">Login with XYZ</button>
@@ -51,19 +54,24 @@
         {% include "gbutton.html" %}
     </div>
     <br> -->
+    {% if gh_enabled %}
     <div>
         <a
             href="https://github.com/login/oauth/authorize?client_id={{ gh_client_id }}&state={{ g_state }}&redirect_uri={{ gh_redirect_uri }}">
-            <button type="button" class="btn btn-secondary">Login with GitHub</button>
+            <button type="button" class="btn btn-primary">Login with GitHub</button>
         </a>
     </div>
     <br>
+    {% endif %}
+    {% if s_enabled %}
     <div>
         <a
             href="https://login.szn.cz/api/v1/oauth/auth?response_type=code&client_id={{ s_client_id }}&scope=identity&redirect_uri={{ s_redirect_uri }}&state={{ g_state }}">
-            <button type="button" class="btn btn-secondary">Login with Seznam</button>
+            <button type="button" class="btn btn-primary">Login with Seznam</button>
         </a>
     </div>
+    <br>
+    {% endif %}
     <br>
     <div>
         Session ID: {{ session_id | default("none") }}

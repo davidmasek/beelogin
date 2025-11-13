@@ -5,9 +5,9 @@ localhost:3000 {
 localhost {
 	forward_auth localhost:8000 {
 		uri /caddy
-		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+		copy_headers X-BeeLogin-User
 	}
 
-    respond "welcome"
+    respond "welcome {header.X-BeeLogin-User}"
 }
 

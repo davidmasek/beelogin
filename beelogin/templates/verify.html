@@ -2,15 +2,21 @@
 
 {% block content %}
 <div class="card">
+    {% if fixed_codes %}
+    <p>Please enter your code</p>
+    {% else %}
     <h2>Check Your Inbox</h2>
     <p>A verification code was NOT sent to <strong>{{ req_username }}</strong>. Please enter it below.</p>
     {% if code %}
     <p>Because this is just a demo you can view the code here: <strong>{{ code }}</strong>.</p>
     {% endif %}
+    {% endif %}
 
     {% if invalid_code %}
     <p class="error-message">That code is incorrect. Please try again.</p>
+    {% if not fixed_codes %}
     <p>If you don't know the code, start the login process again.</p>
+    {% endif %}
     {% endif %}
 
     <form method="POST" action="/verify_code?redirect={{ redirect }}">
@@ -19,7 +25,12 @@
 
         <div class="form-group">
             <label for="code">Verification Code</label>
+            {% if fixed_codes %}
+            <input type="password" id="code" name="code" required autofocus>
+            {% else %}
             <input type="text" id="code" name="code" required autofocus>
+            {% endif %}
+
         </div>
         <button type="submit" class="btn btn-primary">Verify &amp; Log In</button>
     </form>
