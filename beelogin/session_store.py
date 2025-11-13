@@ -1,17 +1,14 @@
 import datetime
 import uuid
-from typing import Annotated
 from dataclasses import dataclass
 
-from fastapi import Cookie
-
-from beelogin import config
+from fastapi import Request
 
 
 @dataclass
 class SessionData:
     session_id: str
-    expires: datetime.datetime 
+    expires: datetime.datetime
     user: str = ""
     state: str | None = None
     nonce: str | None = None
@@ -41,7 +38,7 @@ class SessionStore:
         self.store[session_id] = SessionData(session_id=session_id, expires=expires)
         print("saved session", session_id)
         return session_id
-    
+
     def get_or_create(self, session_id: str) -> SessionData:
         data = self.get(session_id)
         if not session_id or not data:
@@ -49,7 +46,7 @@ class SessionStore:
             session_id = self.create()
         data = self.store[session_id]
         return data
-    
+
     def delete(self, session_id: str) -> None:
         try:
             del self.store[session_id]
@@ -60,5 +57,7 @@ class SessionStore:
 session_store = SessionStore()
 
 
-def get_session(session_id: Annotated[str, Cookie()] = "") -> SessionData:
-    return session_store.get_or_create(session_id)
+def get_session(request: Request) -> SessionData:
+    session = request.state.session_data
+    assert session
+    return session

@@ -1,22 +1,22 @@
 import base64
-import json
 import datetime
-import secrets
-import os
 import hashlib
+import json
+import os
+import secrets
 import string
-from pathlib import Path
-import httpx
-from typing import Annotated
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Request, HTTPException
+import httpx
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from beelogin import config
-from beelogin.session_store import SessionData, get_session, session_store
+from beelogin.session_store import SessionData, get_session
 
 router = APIRouter()
 
@@ -149,13 +149,15 @@ def gh_callback(
 
     # 3. Exchange Code for Access Token
     token_url = "https://github.com/login/oauth/access_token"
-    base = settings.localhost_uri # Use 'base' if 'gh_redirect_uri' is configured to be local
+    base = (
+        settings.localhost_uri
+    )  # Use 'base' if 'gh_redirect_uri' is configured to be local
 
     with httpx.Client(base_url=token_url) as client:
         try:
             # GitHub expects 'Accept: application/json' header to return JSON instead of a form-encoded string
             response = client.post(
-                "", # Empty string since base_url is already the token_url
+                "",  # Empty string since base_url is already the token_url
                 headers={"Accept": "application/json"},
                 data={
                     "code": code,
