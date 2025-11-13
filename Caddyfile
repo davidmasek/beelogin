@@ -1,0 +1,13 @@
+localhost:3000 {
+	reverse_proxy localhost:8000
+}
+
+localhost {
+	forward_auth localhost:8000 {
+		uri /caddy
+		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+	}
+
+    respond "welcome"
+}
+

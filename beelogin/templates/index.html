@@ -30,7 +30,7 @@
     <!-- Logged-out State -->
     <p>Enter your email to receive a login code, or choose another option.</p>
 
-    <form method="POST" action="/request_code">
+    <form method="POST" action="/request_code?redirect={{ redirect }}">
         <div class="form-group">
             <label for="username">Email Address</label>
             <input type="email" id="username" name="username" placeholder="you@example.com" required>

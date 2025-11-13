@@ -11,7 +11,7 @@ from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -97,6 +97,7 @@ user_store = UserStore()
 @router.get("/", response_class=HTMLResponse)
 def root(
     request: Request,
+    redirect: str = "",
     session: SessionData = Depends(get_session),
     settings: config.Settings = Depends(config.get_settings),
 ):
@@ -124,7 +125,33 @@ def root(
             "g_state": session.state,
             "g_nonce": session.nonce,
             "session_id": session.session_id,
+            "redirect": redirect,
         },
+    )
+
+
+@router.get("/caddy")
+def caddy(
+    request: Request,
+    session: SessionData = Depends(get_session),
+    settings: config.Settings = Depends(config.get_settings),
+):
+    proto = request.headers.get("x-forwarded-proto") or ""
+    host = request.headers.get("x-forwarded-host") or ""
+    uri = request.headers.get("x-forwarded-uri") or ""
+    original_uri = f"{proto}://{host}{uri}"
+
+    if session.user:
+        return Response(
+            "OK",
+            status_code=200,
+            headers={
+                "X-BeeLogin-User": session.user,
+            },
+        )
+    return RedirectResponse(
+        f"https://localhost:3000/?redirect={original_uri}",
+        status_code=303,
     )
 
 
@@ -360,7 +387,11 @@ def g_callback(
 
 
 @router.post("/request_code", response_class=HTMLResponse)
-def request_code(request: Request, username: Annotated[str, Form()]):
+def request_code(
+    request: Request,
+    username: Annotated[str, Form()],
+    redirect: str = "",
+):
     user = user_store.get_or_create(username)
     code = user.create_login_code()
     return templates.TemplateResponse(
@@ -369,6 +400,7 @@ def request_code(request: Request, username: Annotated[str, Form()]):
         context={
             "req_username": username,
             "code": code.code,
+            "redirect": redirect,
         },
     )
 
@@ -378,6 +410,7 @@ def verify_code(
     request: Request,
     username: Annotated[str, Form()],
     code: Annotated[str, Form()],
+    redirect: str = "",
     session: SessionData = Depends(get_session),
 ):
     valid_code = False
@@ -386,16 +419,20 @@ def verify_code(
         valid_code = user.validate_login_code(code)
 
     if valid_code:
-        print("sign-in", username)
         session.user = username
+        if redirect:
+            # TODO: might want to check the URL...
+            return RedirectResponse(redirect, status_code=303)
         response = RedirectResponse("/", status_code=303)
         return response
+
     return templates.TemplateResponse(
         request=request,
         name="verify.html",
         context={
             "req_username": username,
             "invalid_code": True,
+            "redirect": redirect,
         },
     )
 

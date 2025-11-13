@@ -13,7 +13,7 @@
     <p>If you don't know the code, start the login process again.</p>
     {% endif %}
 
-    <form method="POST" action="/verify_code">
+    <form method="POST" action="/verify_code?redirect={{ redirect }}">
         <!-- Hidden input to pass the username back to the server -->
         <input type="hidden" name="username" value="{{ req_username }}">
 
