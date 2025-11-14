@@ -7,6 +7,9 @@ localhost:3000 {
 }
 
 localhost {
+	handle_errors {
+		respond "{err.status_code} {err.status_text}"
+	}
 	forward_auth localhost:8000 {
 		uri /caddy
 		copy_headers X-BeeLogin-User
