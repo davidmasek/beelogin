@@ -1,0 +1,26 @@
+[Unit]
+Description=BeeLogin SSO
+
+[Service]
+# The user/group to run the service as
+User=TODO
+
+# Change to the application directory
+WorkingDirectory=TODO/beelogin
+
+# The command to execute:
+# Use the FULL PATH to the virtual environment's interpreter
+# This automatically uses the dependencies installed by uv in that venv.
+ExecStart=TODO/beelogin/.venv/bin/python fastapi run TODO/beelogin/main.py
+
+# Restart the service automatically if it exits with a non-zero status
+Restart=always
+# Wait X second before restarting
+RestartSec=10
+# Standard output/error is logged to journald
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+# Start the service automatically when the system boots up
+WantedBy=multi-user.target
