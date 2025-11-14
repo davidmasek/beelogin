@@ -50,7 +50,7 @@ def root(
     state = hashlib.sha256(os.urandom(1024)).hexdigest()
     session.state = state
 
-    base = settings.localhost_uri
+    base = settings.prod_uri
 
     return templates.TemplateResponse(
         request=request,
@@ -126,7 +126,7 @@ def caddy(
 
     # redirect to root to allow standard login
     return RedirectResponse(
-        settings.localhost_uri,
+        settings.prod_uri,
         status_code=303,
     )
 
@@ -153,7 +153,7 @@ def gh_callback(
     # 3. Exchange Code for Access Token
     token_url = "https://github.com/login/oauth/access_token"
     base = (
-        settings.localhost_uri
+        settings.prod_uri
     )  # Use 'base' if 'gh_redirect_uri' is configured to be local
 
     with httpx.Client(base_url=token_url) as client:
