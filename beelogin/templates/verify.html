@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card">
     {% if fixed_codes %}
-    <p>Please enter your code</p>
+    <p>Please enter your code for <strong>{{ req_username }}</strong></p>
     {% else %}
     <h2>Check Your Inbox</h2>
     <p>A verification code was NOT sent to <strong>{{ req_username }}</strong>. Please enter it below.</p>
@@ -26,7 +26,7 @@
         <div class="form-group">
             <label for="code">Verification Code</label>
             {% if fixed_codes %}
-            <input type="password" id="code" name="code" required autofocus>
+            <input type="password" id="code" name="code" autocomplete="current-password" required autofocus>
             {% else %}
             <input type="text" id="code" name="code" required autofocus>
             {% endif %}

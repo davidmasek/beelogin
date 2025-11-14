@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 import tomllib
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -394,21 +394,40 @@ def g_callback(
     return RedirectResponse("/", status_code=303)
 
 
-@router.post("/request_code", response_class=HTMLResponse)
-def request_code(
+@router.post("/request_code", response_class=RedirectResponse)
+def request_code_post(
     request: Request,
     username: Annotated[str, Form()],
     redirect: str = "",
     settings: config.Settings = Depends(config.get_settings),
 ):
     user = user_store.get_or_create(username)
-    code = user.create_login_code()
+    _ = user.create_login_code()
+    return RedirectResponse(
+        f"/request_code?{urlencode({'username': username, 'redirect': redirect})}",
+        status_code=303,
+    )
+
+
+@router.get("/request_code", response_class=HTMLResponse)
+def request_code(
+    request: Request,
+    username: str = "",
+    redirect: str = "",
+    settings: config.Settings = Depends(config.get_settings),
+):
+    user = user_store.get_or_create(username)
+    # for demo purposes - display the code to user
+    if user.login_codes:
+        code = user.login_codes[0].code
+    else:
+        code = ""
     return templates.TemplateResponse(
         request=request,
         name="verify.html",
         context={
             "req_username": username,
-            "code": code.code,
+            "code": code,
             "redirect": redirect,
             "fixed_codes": settings.fixed_codes,
         },
