@@ -19,7 +19,7 @@
     {% endif %}
     {% endif %}
 
-    <form method="POST" action="/verify_code?redirect={{ redirect }}">
+    <form method="POST" action="/verify_code">
         <!-- Hidden input to pass the username back to the server -->
         <input type="hidden" name="username" value="{{ req_username }}">
 

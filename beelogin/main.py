@@ -42,10 +42,11 @@ async def refresh_session_cookie_middleware(request: Request, call_next):
     response = await call_next(request)
 
     # 3. Set the cookie if a valid session ID was determined.
-    if session_data.session_id:
+    session_id = session_data.session_id
+    if session_id:
         response.set_cookie(
             SESSION_COOKIE_NAME,
-            session_data.session_id,
+            session_id,
             max_age=SESSION_MAX_AGE_SECONDS,
             secure=False,  # Set to True in production with HTTPS
             httponly=True,

@@ -1,13 +1,13 @@
-import logging
 import base64
 import datetime
 import hashlib
 import json
+import logging
 import os
 import secrets
 import string
-from dataclasses import dataclass, field
 import tomllib
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import quote_plus, urlencode
@@ -100,7 +100,6 @@ user_store = UserStore()
 @router.get("/", response_class=HTMLResponse)
 def root(
     request: Request,
-    redirect: str = "",
     session: SessionData = Depends(get_session),
     settings: config.Settings = Depends(config.get_settings),
 ):
@@ -132,7 +131,7 @@ def root(
             "g_state": session.state,
             "g_nonce": session.nonce,
             "session_id": session.session_id,
-            "redirect": redirect,
+            "redirect": session.redirect,
         },
     )
 
@@ -156,9 +155,12 @@ def caddy(
                 "X-BeeLogin-User": session.user,
             },
         )
+
+    session.set_redirect(
+        original_uri, datetime.datetime.now() + datetime.timedelta(minutes=15)
+    )
     return RedirectResponse(
-        # TODO: which url?
-        f"https://localhost:3000/?redirect={original_uri}",
+        settings.localhost_uri,
         status_code=303,
     )
 
@@ -245,11 +247,20 @@ def gh_callback(
 
     # Prioritize username or ID for the session user.
     if github_username:
-        session.user = github_username
+        session.set_user(github_username, "github-username")
     elif github_id:
-        session.user = str(github_id)
+        session.set_user(str(github_id), "github-id")
     else:
         raise HTTPException(status_code=500, detail="Unexpected user info from GitHub.")
+
+    redirect_uri = session.redirect
+    if redirect_uri:
+        session.remove_redirect()
+
+        return RedirectResponse(
+            redirect_uri,
+            status_code=303,
+        )
 
     # 6. Redirect to the main page
     return RedirectResponse("/", status_code=303)
@@ -299,9 +310,9 @@ def s_callback(
     email = tokens.get("account_name")
 
     if email:
-        session.user = email
+        session.set_user(email, "seznam-email")
     elif s_user_id:
-        session.user = email
+        session.set_user(s_user_id, "seznam-user-id")
     else:
         raise HTTPException(status_code=500, detail="Unexpected user info.")
 
@@ -386,9 +397,9 @@ def g_callback(
     google_user_id = user_info.get("sub")
     email = user_info.get("email")
     if email:
-        session.user = email
+        session.set_user(email, "google-email")
     elif google_user_id:
-        session.user = email
+        session.set_user(google_user_id, "google-user-id")
     else:
         raise HTTPException(status_code=500, detail="Unexpected user info.")
     return RedirectResponse("/", status_code=303)
@@ -398,13 +409,12 @@ def g_callback(
 def request_code_post(
     request: Request,
     username: Annotated[str, Form()],
-    redirect: str = "",
     settings: config.Settings = Depends(config.get_settings),
 ):
     user = user_store.get_or_create(username)
     _ = user.create_login_code()
     return RedirectResponse(
-        f"/request_code?{urlencode({'username': username, 'redirect': redirect})}",
+        f"/request_code?{urlencode({'username': username})}",
         status_code=303,
     )
 
@@ -413,7 +423,7 @@ def request_code_post(
 def request_code(
     request: Request,
     username: str = "",
-    redirect: str = "",
+    session: SessionData = Depends(get_session),
     settings: config.Settings = Depends(config.get_settings),
 ):
     user = user_store.get_or_create(username)
@@ -428,7 +438,7 @@ def request_code(
         context={
             "req_username": username,
             "code": code,
-            "redirect": redirect,
+            "redirect": session.redirect,
             "fixed_codes": settings.fixed_codes,
         },
     )
@@ -439,7 +449,6 @@ def verify_code(
     request: Request,
     username: Annotated[str, Form()],
     code: Annotated[str, Form()],
-    redirect: str = "",
     session: SessionData = Depends(get_session),
     settings: config.Settings = Depends(config.get_settings),
 ):
@@ -466,12 +475,14 @@ def verify_code(
         if user:
             valid_code = user.validate_login_code(code)
 
+    redirect = session.redirect
     if valid_code:
-        session.user = username
+        session.set_user(username, "beelogin-email")
         if redirect:
-            # TODO: might want to check the URL...
+            # TODO: might want to check the URL against a whitelist
             return RedirectResponse(
-                redirect, status_code=303, headers={"X-BeeLogin-User": session.user}
+                redirect,
+                status_code=303,
             )
         response = RedirectResponse("/", status_code=303)
         return response

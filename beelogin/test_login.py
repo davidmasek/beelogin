@@ -1,11 +1,30 @@
 from http.cookies import SimpleCookie
+from typing import Iterator
 
+import pytest
 from fastapi.testclient import TestClient
 
+from beelogin import config
 from beelogin.login import user_store
+from beelogin.main import app
 from beelogin.session_store import session_store
 
 
+@pytest.fixture
+def enable_email_codes() -> Iterator[config.Settings]:
+    settings = config.Settings()
+    settings.email_enabled = True
+    settings.fixed_codes = False
+
+    app.dependency_overrides[config.get_settings] = lambda: settings
+    try:
+        yield settings
+    finally:
+        # not great since we remove all overrides, but works for now
+        app.dependency_overrides = {}
+
+
+@pytest.mark.usefixtures("enable_email_codes")
 def test_verify_code(client: TestClient):
     username = "dm"
     user = user_store.get_or_create(username)
@@ -37,6 +56,7 @@ def test_verify_code(client: TestClient):
     assert session_data.user == "dm"
 
 
+@pytest.mark.usefixtures("enable_email_codes")
 def test_verify_code_fail(client: TestClient):
     response = client.post(
         "/verify_code",
@@ -58,7 +78,7 @@ def test_verify_code_fail(client: TestClient):
 
 def test_logout(client: TestClient):
     session_data = session_store.get_or_create("")
-    session_data.user = "admin"
+    session_data.set_user("admin", "test")
     session_id = session_data.session_id
 
     client.cookies.set("session_id", session_id)

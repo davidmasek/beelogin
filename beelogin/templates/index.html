@@ -21,6 +21,10 @@
             <dt>Last Login:</dt>
             <dd>{{ last_login | default('Today') }}</dd>
         </div>
+        <div>
+            <dt>Session ID:</dt>
+            <dd>{{ session_id | default("none") }}</dd>
+        </div>
     </dl>
 
     <form method="POST" action="/logout" style="text-align: center;">
