@@ -6,11 +6,8 @@ Exploring authentication.
 
 ```sh
 # tested with Python 3.14
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-fastapi dev beelogin/main.py
+# uses make and uv
+make run
 ```
 
 
@@ -20,9 +17,8 @@ https://pyauth.github.io/pyotp/
 
 ## TODO
 
-- redirect URI whitelist
-- users whitelist
-    - possibly with admin/non-admin separation
-    - store in TOML
+- local users
+    - CLI for adding users
+    - store hashed passwords
 - persistence
     - session_ids
