@@ -48,7 +48,7 @@ async def refresh_session_cookie_middleware(request: Request, call_next):
             SESSION_COOKIE_NAME,
             session_id,
             max_age=SESSION_MAX_AGE_SECONDS,
-            secure=False,  # Set to True in production with HTTPS
+            secure=True,
             httponly=True,
             samesite="lax",
         )
