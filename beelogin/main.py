@@ -51,6 +51,7 @@ async def refresh_session_cookie_middleware(request: Request, call_next):
             secure=True,
             httponly=True,
             samesite="lax",
+            domain=".optimisticotter.me",  # TODO: add to config
         )
 
     return response

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # All the settings can be ovewritten with ENV variables.
     # You can use .env if appropriate.
     app_name: str = "BeeLogin"
+    # TODO: switching between prod_uri and localhost_uri or unifying to one
     prod_uri: str = "https://beelogin.optimisticotter.me"
     localhost_uri: str = "http://localhost:8000"
     # username/email login
