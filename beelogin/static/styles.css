@@ -109,8 +109,9 @@ label {
     margin-bottom: 0.25rem;
 }
 
+
 input[type="text"],
-#code,
+input[type="password"],
 input[type="email"] {
     width: 100%;
     padding: 0.75rem;

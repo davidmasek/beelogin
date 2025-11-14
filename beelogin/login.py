@@ -4,10 +4,8 @@ import hashlib
 import os
 import secrets
 import string
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -15,8 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from beelogin import config
-from beelogin.local_users import validate_password
+from beelogin import config, local_users
 from beelogin.session_store import SessionData, get_session
 
 router = APIRouter()
@@ -25,61 +22,11 @@ _current_dir = Path(__file__).parent
 templates = Jinja2Templates(directory=_current_dir / "templates")
 
 
-@dataclass
-class LoginCode:
-    code: str
-    expires: datetime.datetime
-
-
 def generate_secure_code(length: int) -> str:
     """Generates a cryptographically secure random string."""
     # Define the characters to choose from (e.g., uppercase letters and digits)
     chars = string.ascii_uppercase + string.digits
     return "".join(secrets.choice(chars) for _ in range(length))
-
-
-@dataclass
-class UserData:
-    user: str
-    login_codes: list[LoginCode] = field(default_factory=list)
-    sessions: list[str] = field(default_factory=list)
-
-    def create_login_code(self) -> LoginCode:
-        # clear old ones
-        self.login_codes = [
-            code for code in self.login_codes if code.expires > datetime.datetime.now()
-        ]
-        code = LoginCode(
-            generate_secure_code(length=6),
-            datetime.datetime.now() + datetime.timedelta(minutes=30),
-        )
-        self.login_codes.append(code)
-        return code
-
-    def validate_login_code(self, input_code: str) -> bool:
-        for code in self.login_codes:
-            if code.code == input_code:
-                if code.expires > datetime.datetime.now():
-                    return True
-        return False
-
-
-class UserStore:
-    users: dict[str, UserData]
-
-    def __init__(self):
-        self.users = {}
-
-    def get(self, user: str) -> UserData | None:
-        return self.users.get(user)
-
-    def get_or_create(self, user: str) -> UserData:
-        if user not in self.users:
-            self.users[user] = UserData(user=user)
-        return self.users[user]
-
-    def store(self, user: str, data: UserData) -> None:
-        self.users[user] = data
 
 
 class LoginRequest(BaseModel):
@@ -90,9 +37,6 @@ class LoginRequest(BaseModel):
 class LoginVerifyRequest(BaseModel):
     username: str
     code: str
-
-
-user_store = UserStore()
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -115,7 +59,6 @@ def root(
             "username": session.user,
             "email_enabled": settings.email_enabled,
             "gh_enabled": settings.gh_enabled,
-            "g_client_id": settings.gh_enabled,
             "gh_client_id": settings.gh_client_id,
             "gh_redirect_uri": f"{base}{settings.gh_redirect_uri}",
             "g_state": session.state,
@@ -145,7 +88,7 @@ def caddy(
             if len(parts) != 2:
                 raise HTTPException(400, "Invalid auth")
             username, pwd = parts
-            if validate_password(username, pwd):
+            if local_users.validate_password(username, pwd):
                 session.set_user(username, "local")
             else:
                 raise HTTPException(401, "Invalid username or password")
@@ -263,15 +206,20 @@ def gh_callback(
     # 5. Extract and Store User Identifier
     # GitHub provides 'login' (username) and 'id'. 'email' may be null if private or not exposed.
     github_username = user_info.get("login")
-    github_id = user_info.get("id")
 
-    # Prioritize username or ID for the session user.
-    if github_username:
-        session.set_user(github_username, "github-username")
-    elif github_id:
-        session.set_user(str(github_id), "github-id")
-    else:
+    if not github_username:
         raise HTTPException(status_code=500, detail="Unexpected user info from GitHub.")
+
+    if settings.local_users:
+        user = local_users.find_by_github_username(github_username)
+        if not user:
+            raise HTTPException(
+                403,
+                "Given user is not registered on this site. Contact site administrator or check your configuration.",
+            )
+        session.set_user(user.username, "github")
+    else:
+        session.set_user(github_username, "github")
 
     redirect_uri = session.redirect
     if redirect_uri:
@@ -287,67 +235,26 @@ def gh_callback(
     return RedirectResponse("/", status_code=303)
 
 
-@router.post("/request_code", response_class=RedirectResponse)
-def request_code_post(
-    request: Request,
-    username: Annotated[str, Form()],
-    settings: config.Settings = Depends(config.get_settings),
-):
-    user = user_store.get_or_create(username)
-    _ = user.create_login_code()
-    return RedirectResponse(
-        f"/request_code?{urlencode({'username': username})}",
-        status_code=303,
-    )
-
-
-@router.get("/request_code", response_class=HTMLResponse)
-def request_code(
-    request: Request,
-    username: str = "",
-    session: SessionData = Depends(get_session),
-    settings: config.Settings = Depends(config.get_settings),
-):
-    user = user_store.get_or_create(username)
-    # for demo purposes - display the code to user
-    if user.login_codes:
-        code = user.login_codes[0].code
-    else:
-        code = ""
-    return templates.TemplateResponse(
-        request=request,
-        name="verify.html",
-        context={
-            "req_username": username,
-            "code": code,
-            "redirect": session.redirect,
-            "fixed_codes": settings.fixed_codes,
-        },
-    )
-
-
-@router.post("/verify_code", response_class=HTMLResponse)
+@router.post("/verify_form", response_class=HTMLResponse)
 def verify_code(
     request: Request,
     username: Annotated[str, Form()],
-    code: Annotated[str, Form()],
+    password: Annotated[str, Form()],
     session: SessionData = Depends(get_session),
     settings: config.Settings = Depends(config.get_settings),
 ):
     if not settings.email_enabled:
-        raise HTTPException(403)
+        raise HTTPException(403, "Username login not allowed")
+    if not settings.local_users:
+        raise HTTPException(400, "Username login not configured")
 
     valid_code = False
-    if settings.fixed_codes:
-        validate_password(username, code)
-    else:
-        user = user_store.get(username)
-        if user:
-            valid_code = user.validate_login_code(code)
+    if settings.local_users:
+        valid_code = local_users.validate_password(username, password)
 
     redirect = session.redirect
     if valid_code:
-        session.set_user(username, "beelogin-email")
+        session.set_user(username, "local")
         if redirect:
             # TODO: might want to check the URL against a whitelist
             return RedirectResponse(
@@ -364,7 +271,7 @@ def verify_code(
             "req_username": username,
             "invalid_code": True,
             "redirect": redirect,
-            "fixed_codes": settings.fixed_codes,
+            "local_users": settings.local_users,
         },
     )
 

@@ -2,37 +2,21 @@
 
 {% block content %}
 <div class="card">
-    {% if fixed_codes %}
-    <p>Please enter your code for <strong>{{ req_username }}</strong></p>
-    {% else %}
-    <h2>Check Your Inbox</h2>
-    <p>A verification code was NOT sent to <strong>{{ req_username }}</strong>. Please enter it below.</p>
-    {% if code %}
-    <p>Because this is just a demo you can view the code here: <strong>{{ code }}</strong>.</p>
-    {% endif %}
-    {% endif %}
+    <p>Logging as <strong>{{ req_username }}</strong>.</p>
 
     {% if invalid_code %}
-    <p class="error-message">That code is incorrect. Please try again.</p>
-    {% if not fixed_codes %}
-    <p>If you don't know the code, start the login process again.</p>
-    {% endif %}
+    <p class="error-message">Invalid username or password. Please try again.</p>
     {% endif %}
 
-    <form method="POST" action="/verify_code">
+    <form method="POST" action="/verify_form">
         <!-- Hidden input to pass the username back to the server -->
         <input type="hidden" name="username" value="{{ req_username }}">
 
         <div class="form-group">
-            <label for="code">Verification Code</label>
-            {% if fixed_codes %}
-            <input type="password" id="code" name="code" autocomplete="current-password" required autofocus>
-            {% else %}
-            <input type="text" id="code" name="code" required autofocus>
-            {% endif %}
-
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required autofocus>
         </div>
-        <button type="submit" class="btn btn-primary">Verify &amp; Log In</button>
+        <button type="submit" class="btn btn-primary">Login</button>
     </form>
 </div>
 

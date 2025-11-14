@@ -1,5 +1,4 @@
 from base64 import b64encode
-from http.cookies import SimpleCookie
 from typing import Iterator
 from unittest.mock import patch
 
@@ -7,68 +6,80 @@ import pytest
 from fastapi.testclient import TestClient
 
 from beelogin import config
-from beelogin.login import user_store
+from beelogin.local_users import LocalUser
 from beelogin.main import app
 from beelogin.session_store import session_store
 
 
-@pytest.fixture
-def enable_email_codes() -> Iterator[config.Settings]:
+@pytest.fixture(scope="function")
+def settings() -> Iterator[config.Settings]:
     settings = config.Settings()
-    settings.email_enabled = True
-    settings.fixed_codes = False
 
     app.dependency_overrides[config.get_settings] = lambda: settings
     try:
         yield settings
     finally:
-        # not great since we remove all overrides, but works for now
         app.dependency_overrides = {}
 
 
-@pytest.mark.usefixtures("enable_email_codes")
-def test_verify_code(client: TestClient):
+def test_verify_form(client: TestClient, settings: config.Settings):
+    settings.local_users = True
+    settings.email_enabled = True
+
     username = "dm"
-    user = user_store.get_or_create(username)
-    code = user.create_login_code()
+    password = "test"
 
-    response = client.post(
-        "/verify_code",
-        data={
-            "username": username,
-            "code": code.code,
-        },
-        follow_redirects=False,  # we lose the set-cookie header on redirect
-    )
-    # verify the cookie details
-    assert response.is_success or response.is_redirect
-    cookies_header = response.headers.get("set-cookie")
-    assert cookies_header
-    cookies = SimpleCookie(cookies_header)
-    session_cookie = cookies.get("session_id")
-    assert session_cookie
-    assert session_cookie.get("httponly")
+    with patch("beelogin.local_users._load_users") as mock:
+        mock.return_value = {
+            username: LocalUser(
+                username=username,
+                password=password,
+            )
+        }
 
+        response = client.post(
+            "/verify_form",
+            data={
+                "username": username,
+                "password": password,
+            },
+            follow_redirects=False,
+        )
+    assert response.is_redirect
     # verify login
     session_id = client.cookies.get("session_id")
     assert session_id
 
     session_data = session_store.get(session_id)
     assert session_data
-    assert session_data.user == "dm"
+    assert session_data.user == username
 
 
-@pytest.mark.usefixtures("enable_email_codes")
-def test_verify_code_fail(client: TestClient):
-    response = client.post(
-        "/verify_code",
-        data={
-            "username": "dm",
-            "code": "invalid",
-        },
-    )
-    assert response.is_success
+def test_verify_form_fail(client: TestClient, settings: config.Settings):
+    settings.local_users = True
+    settings.email_enabled = True
 
+    username = "dm"
+    password = "test"
+
+    with patch("beelogin.local_users._load_users") as mock:
+        mock.return_value = {
+            username: LocalUser(
+                username=username,
+                password=password,
+            )
+        }
+
+        response = client.post(
+            "/verify_form",
+            data={
+                "username": username,
+                "password": password + "-invalid",
+            },
+            follow_redirects=False,
+        )
+    response.raise_for_status()
+    # verify login
     session_id = client.cookies.get("session_id")
     assert session_id
 
@@ -101,13 +112,13 @@ def test_basic_auth(client: TestClient):
         return usr == username and pwd == password
 
     # ensure valid user+pwd login is successful
-    with patch("beelogin.login.validate_password", validate_carl):
+    with patch("beelogin.login.local_users.validate_password", validate_carl):
         token = b64encode(f"{username}:{password}".encode("ascii")).decode("ascii")
         resp = client.get("/caddy", headers={"authorization": f"Basic {token}"})
     assert resp.is_success
 
     # ensure invalid pwd login is unsuccessful
-    with patch("beelogin.login.validate_password", validate_carl):
+    with patch("beelogin.login.local_users.validate_password", validate_carl):
         token = b64encode(f"{username}:not-cats".encode("ascii")).decode("ascii")
         resp = client.get("/caddy", headers={"authorization": f"Basic {token}"})
     assert resp.is_client_error
