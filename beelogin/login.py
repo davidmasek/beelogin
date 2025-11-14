@@ -1,10 +1,9 @@
+import base64
 import datetime
 import hashlib
-import logging
 import os
 import secrets
 import string
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated
@@ -17,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from beelogin import config
+from beelogin.local_users import validate_password
 from beelogin.session_store import SessionData, get_session
 
 router = APIRouter()
@@ -132,11 +132,32 @@ def caddy(
     session: SessionData = Depends(get_session),
     settings: config.Settings = Depends(config.get_settings),
 ):
-    proto = request.headers.get("x-forwarded-proto") or ""
-    host = request.headers.get("x-forwarded-host") or ""
-    uri = request.headers.get("x-forwarded-uri") or ""
-    original_uri = f"{proto}://{host}{uri}"
+    # explicit auth provided via header
+    auth = request.headers.get("authorization")
+    if auth:
+        if auth.startswith("Basic "):
+            token = auth[len("Basic ") :]
+            print(f"Decoding '{token}'")
+            try:
+                parts = base64.b64decode(token).decode().split(":")
+            except Exception:
+                raise HTTPException(400, "Invalid auth")
+            if len(parts) != 2:
+                raise HTTPException(400, "Invalid auth")
+            username, pwd = parts
+            if validate_password(username, pwd):
+                session.set_user(username, "local")
+            else:
+                raise HTTPException(401, "Invalid username or password")
+            return Response("TODO")
+        elif auth.startswith("Bearer "):
+            token = auth[len("Bearer ") :]
+            # TODO: currently not supported
+            raise HTTPException(400, "Unsuported auth")
+        else:
+            raise HTTPException(400, "Unsuported auth")
 
+    # already logged in
     if session.user:
         return Response(
             "OK",
@@ -147,9 +168,17 @@ def caddy(
             },
         )
 
+    # save original_uri to later return the user there
+    proto = request.headers.get("x-forwarded-proto") or ""
+    host = request.headers.get("x-forwarded-host") or ""
+    uri = request.headers.get("x-forwarded-uri") or ""
+    original_uri = f"{proto}://{host}{uri}"
+
     session.set_redirect(
         original_uri, datetime.datetime.now() + datetime.timedelta(minutes=15)
     )
+
+    # redirect to root to allow standard login
     return RedirectResponse(
         settings.localhost_uri,
         status_code=303,
@@ -310,19 +339,7 @@ def verify_code(
 
     valid_code = False
     if settings.fixed_codes:
-        try:
-            with open(Path(Path.home() / ".beelogin").absolute(), "rb") as fh:
-                cfg = tomllib.load(fh)
-            for user in cfg.get("users") or []:
-                name = user.get("name") or ""
-                if name == username:
-                    pwd = user.get("password")
-                    if pwd and code == pwd:
-                        valid_code = True
-                        break
-        except (FileNotFoundError, tomllib.TOMLDecodeError):
-            logging.exception("Fixed codes not configured")
-            raise HTTPException(500, "Fixed codes not configured")
+        validate_password(username, code)
     else:
         user = user_store.get(username)
         if user:

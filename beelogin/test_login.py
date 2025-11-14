@@ -1,5 +1,7 @@
+from base64 import b64encode
 from http.cookies import SimpleCookie
 from typing import Iterator
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -89,3 +91,49 @@ def test_logout(client: TestClient):
 
     session_data = session_store.get_or_create(session_id)
     assert not session_data.user
+
+
+def test_basic_auth(client: TestClient):
+    username = "carl"
+    password = "cats"
+
+    def validate_carl(usr: str, pwd: str) -> bool:
+        return usr == username and pwd == password
+
+    # ensure valid user+pwd login is successful
+    with patch("beelogin.login.validate_password", validate_carl):
+        token = b64encode(f"{username}:{password}".encode("ascii")).decode("ascii")
+        resp = client.get("/caddy", headers={"authorization": f"Basic {token}"})
+    assert resp.is_success
+
+    # ensure invalid pwd login is unsuccessful
+    with patch("beelogin.login.validate_password", validate_carl):
+        token = b64encode(f"{username}:not-cats".encode("ascii")).decode("ascii")
+        resp = client.get("/caddy", headers={"authorization": f"Basic {token}"})
+    assert resp.is_client_error
+
+
+def test_caddy_already_logged_in(client: TestClient):
+    session_data = session_store.get_or_create("")
+    session_data.set_user("admin", "test")
+    session_id = session_data.session_id
+
+    client.cookies.set("session_id", session_id)
+    response = client.get(
+        "/caddy",
+    )
+    assert response.is_success
+
+
+def test_caddy_not_logged_in(client: TestClient):
+    session_data = session_store.get_or_create("")
+    session_data.logout()
+    session_id = session_data.session_id
+
+    client.cookies.set("session_id", session_id)
+    # expect 3xx redirect
+    response = client.get(
+        "/caddy",
+        follow_redirects=False,
+    )
+    assert not response.is_success
