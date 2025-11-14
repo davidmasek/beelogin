@@ -1,7 +1,5 @@
-import base64
 import datetime
 import hashlib
-import json
 import logging
 import os
 import secrets
@@ -10,7 +8,7 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -108,9 +106,6 @@ def root(
     state = hashlib.sha256(os.urandom(1024)).hexdigest()
     session.state = state
 
-    nonce = secrets.token_urlsafe(32)
-    session.nonce = nonce
-
     base = settings.localhost_uri
 
     return templates.TemplateResponse(
@@ -119,18 +114,13 @@ def root(
         context={
             "username": session.user,
             "email_enabled": settings.email_enabled,
-            "g_enabled": settings.g_enabled,
-            "s_enabled": settings.s_enabled,
             "gh_enabled": settings.gh_enabled,
             "g_client_id": settings.gh_enabled,
-            "s_client_id": settings.s_client_id,
             "gh_client_id": settings.gh_client_id,
-            "g_redirect_uri": quote_plus(f"{base}{settings.g_redirect_uri}"),
-            "s_redirect_uri": quote_plus(f"{base}{settings.s_redirect_uri}"),
-            "gh_redirect_uri": quote_plus(f"{base}{settings.gh_redirect_uri}"),
+            "gh_redirect_uri": f"{base}{settings.gh_redirect_uri}",
             "g_state": session.state,
-            "g_nonce": session.nonce,
             "session_id": session.session_id,
+            "provider": session.identity_provider,
             "redirect": session.redirect,
         },
     )
@@ -153,6 +143,7 @@ def caddy(
             status_code=200,
             headers={
                 "X-BeeLogin-User": session.user,
+                "X-BeeLogin-Provider": session.identity_provider,
             },
         )
 
@@ -257,151 +248,13 @@ def gh_callback(
     if redirect_uri:
         session.remove_redirect()
 
+        # TODO: might want to check the URL against a whitelist
         return RedirectResponse(
             redirect_uri,
             status_code=303,
         )
 
     # 6. Redirect to the main page
-    return RedirectResponse("/", status_code=303)
-
-
-@router.get("/seznam/callback")
-def s_callback(
-    session: SessionData = Depends(get_session),
-    settings: config.Settings = Depends(config.get_settings),
-    state: str = "",
-    code: str = "",
-):
-    if not state or not session.state or state != session.state:
-        raise HTTPException(401, detail="State mismatch.")
-
-    session.state = None
-
-    if not code:
-        raise HTTPException(status_code=400, detail="Authorization code missing.")
-
-    token_url = "https://login.szn.cz/api/v1/oauth/token"
-    base = settings.localhost_uri
-
-    with httpx.Client() as client:
-        try:
-            response = client.post(
-                token_url,
-                data={
-                    "code": code,
-                    "client_id": settings.s_client_id,
-                    "client_secret": settings.s_client_secret,
-                    "redirect_uri": f"{base}{settings.s_redirect_uri}",
-                    "grant_type": "authorization_code",
-                },
-            )
-            response.raise_for_status()  # Raises an exception for 4xx/5xx status codes
-            tokens = response.json()
-
-        except httpx.HTTPStatusError as e:
-            print(f"Token exchange failed: {e.response.text}")
-            raise HTTPException(
-                status_code=400, detail="Failed to exchange code for tokens."
-            )
-
-    # `tokens` keys: token_type, access_token, refresh_token, expires_in, scopes, account_name, oauth_user_id, status, message
-    s_user_id = tokens.get("oauth_user_id")
-    email = tokens.get("account_name")
-
-    if email:
-        session.set_user(email, "seznam-email")
-    elif s_user_id:
-        session.set_user(s_user_id, "seznam-user-id")
-    else:
-        raise HTTPException(status_code=500, detail="Unexpected user info.")
-
-    return RedirectResponse("/", status_code=303)
-
-
-@router.get("/google/callback")
-def g_callback(
-    session: SessionData = Depends(get_session),
-    settings: config.Settings = Depends(config.get_settings),
-    state: str = "",
-    code: str = "",
-):
-    if not state or not session.state or state != session.state:
-        raise HTTPException(401, detail="State mismatch.")
-
-    session.state = None
-
-    # Check for stored nonce
-    expected_nonce = session.nonce
-    if not expected_nonce:
-        # A nonce should always be present if the flow started correctly
-        raise HTTPException(401, detail="Nonce missing from session.")
-
-    # Clear the session nonce before processing
-    session.nonce = None
-
-    if not code:
-        raise HTTPException(status_code=400, detail="Authorization code missing.")
-
-    token_url = "https://oauth2.googleapis.com/token"
-    with httpx.Client() as client:
-        try:
-            response = client.post(
-                token_url,
-                data={
-                    "code": code,
-                    "client_id": settings.g_client_id,
-                    "client_secret": settings.g_client_secret,
-                    "redirect_uri": settings.g_redirect_uri,
-                    "grant_type": "authorization_code",
-                },
-            )
-            response.raise_for_status()  # Raises an exception for 4xx/5xx status codes
-            tokens = response.json()
-
-        except httpx.HTTPStatusError as e:
-            print(f"Token exchange failed: {e.response.text}")
-            raise HTTPException(
-                status_code=400, detail="Failed to exchange code for tokens."
-            )
-
-    id_token = tokens.get("id_token")
-    if not id_token:
-        raise HTTPException(
-            status_code=400, detail="ID token missing from Google response."
-        )
-
-    # For a simple solution, we'll extract the user info by decoding the token
-    # (since the token came directly from Google over a secure connection).
-    try:
-        # The payload is the second part of the JWT
-        payload_base64 = id_token.split(".")[1]
-        # Base64 strings must be padded for correct decoding
-        payload_base64_padded = payload_base64 + "=" * (-len(payload_base64) % 4)
-
-        user_info = json.loads(base64.urlsafe_b64decode(payload_base64_padded).decode())
-    except (IndexError, json.JSONDecodeError, UnicodeDecodeError):
-        raise HTTPException(status_code=500, detail="Failed to decode Google ID token.")
-
-    if user_info.get("aud") != settings.g_client_id:
-        raise HTTPException(status_code=400, detail="ID token audience mismatch.")
-    if not user_info.get("email_verified"):
-        raise HTTPException(status_code=400, detail="Google email not verified.")
-
-    actual_nonce = user_info.get("nonce")
-    if actual_nonce != expected_nonce:  # <--- COMPARE STORED NONCE WITH TOKEN NONCE
-        raise HTTPException(
-            401, detail="Nonce mismatch in ID token. Possible replay attack."
-        )
-
-    google_user_id = user_info.get("sub")
-    email = user_info.get("email")
-    if email:
-        session.set_user(email, "google-email")
-    elif google_user_id:
-        session.set_user(google_user_id, "google-user-id")
-    else:
-        raise HTTPException(status_code=500, detail="Unexpected user info.")
     return RedirectResponse("/", status_code=303)
 
 

@@ -43,9 +43,8 @@ class ExpiringWrapper(Generic[T]):
 class SessionData:
     _session_id: ExpiringWrapper[str]
     _user: str | None
-    identity_provider: str | None
+    _identity_provider: str | None
     state: str | None
-    nonce: str | None
     _redirect: ExpiringWrapper[str] | None
 
     def __init__(
@@ -55,18 +54,21 @@ class SessionData:
     ):
         self.set_session_id(session_id, session_id_expiry)
         self._user = None
-        self.identity_provider = None
+        self._identity_provider = None
         self.state = None
-        self.nonce = None
         self._redirect = None
 
     @property
     def user(self) -> str:
         return self._user or ""
 
+    @property
+    def identity_provider(self) -> str:
+        return self._identity_provider or ""
+
     def set_user(self, user: str, identity_provider: str) -> None:
         self._user = user
-        self.identity_provider = identity_provider
+        self._identity_provider = identity_provider
 
     @property
     def session_id(self) -> str:
@@ -94,7 +96,7 @@ class SessionData:
 
     def logout(self):
         self._user = None
-        self.identity_provider = None
+        self._identity_provider = None
 
 
 class SessionStore:

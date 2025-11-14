@@ -12,8 +12,8 @@ localhost {
 	}
 	forward_auth localhost:8000 {
 		uri /caddy
-		copy_headers X-BeeLogin-User
+		copy_headers X-BeeLogin-User X-BeeLogin-Provider
 	}
 
-    respond "welcome {header.X-BeeLogin-User}"
+    respond "welcome {header.X-BeeLogin-User}, provider: {header.X-BeeLogin-Provider}"
 }

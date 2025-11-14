@@ -12,17 +12,7 @@ class Settings(BaseSettings):
     localhost_uri: str = "http://localhost:8000"
     # email login
     email_enabled: bool = True
-    # Google Login
-    g_enabled: bool = False
-    g_client_id: str = ""
-    g_client_secret: str = ""
-    g_redirect_uri: str = "/google/callback"
-    # Seznam Login
-    s_enabled: bool = True
-    s_client_id: str = ""
-    s_client_secret: str = ""
-    s_redirect_uri: str = "/seznam/callback"
-    # GitHub
+    # GitHub login
     gh_enabled: bool = True
     gh_client_id: str = ""
     gh_client_secret: str = ""
