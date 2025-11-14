@@ -117,6 +117,9 @@ def caddy(
     uri = request.headers.get("x-forwarded-uri") or ""
     original_uri = f"{proto}://{host}{uri}"
 
+    if settings.redirect_whitelist:
+        if host not in settings.redirect_whitelist:
+            raise HTTPException(403, f"Redirect to {host} not allowed")
     session.set_redirect(
         original_uri, datetime.datetime.now() + datetime.timedelta(minutes=15)
     )
@@ -225,7 +228,6 @@ def gh_callback(
     if redirect_uri:
         session.remove_redirect()
 
-        # TODO: might want to check the URL against a whitelist
         return RedirectResponse(
             redirect_uri,
             status_code=303,
@@ -256,7 +258,6 @@ def verify_code(
     if valid_code:
         session.set_user(username, "local")
         if redirect:
-            # TODO: might want to check the URL against a whitelist
             return RedirectResponse(
                 redirect,
                 status_code=303,

@@ -1,5 +1,6 @@
 import logging
 import tomllib
+from functools import lru_cache
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
@@ -13,7 +14,7 @@ class LocalUser(BaseModel):
     github_username: str | None = None
 
 
-# TODO: might want to cache the loaded config
+@lru_cache
 def _load_users() -> dict[str, LocalUser]:
     try:
         with open(USERS_FILE_PATH, "rb") as fh:
